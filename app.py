@@ -56,6 +56,7 @@ class Crawler:
             self.home_url = self.website
 
     def search_links_in_script_tags(self, soup):
+        new_urls = []
         scripts = soup.find_all('script')
         for script in scripts:
             if script.attrs.get("type") == 'text/javascript':
@@ -64,11 +65,13 @@ class Crawler:
                     new_urls = re.findall(self.regex_url, line)
                     for url in new_urls:
                         if ";" not in url:
-                            self.urls.add(url)
                             print(url)
-                            self.crawl(url)
+                            self.urls.add(url)
+                            new_urls.append(url)
+        return new_urls
 
     def search_links_in_html(self, soup):
+        new_urls = []
         links = soup.find_all('a')
         for link in links:
             url = link.get('href')
@@ -88,14 +91,16 @@ class Crawler:
                     if (url not in list(self.urls)):
                         print(url)
                         self.urls.add(url)
-                        self.crawl(url)
+                        new_urls.append(url)
+        return new_urls
 
     def crawl(self, url, first=False):
+        new_urls = []
         self.autosave()
 
         robots = Robots.fetch(self.robots_url)
         if not robots.allowed(url, self.user_agent):
-            return
+            return new_urls
 
         if not hasattr(self, "start_waiting_time"):
             self.start_waiting_time = datetime.now()
@@ -104,10 +109,10 @@ class Crawler:
             response = requests.get(url)
         except Exception as e:
             print(e)
-            return
+            return new_urls
 
         if response.status_code != 200:
-            return
+            return new_urls
 
         self.ratelimit()
 
@@ -118,16 +123,22 @@ class Crawler:
         soup = BeautifulSoup(html, 'html.parser')
 
         if self.search_in_scripts_tags:
-            self.search_links_in_script_tags(soup)
+            new_urls += self.search_links_in_script_tags(soup)
 
-        self.search_links_in_html(soup)
+        new_urls += self.search_links_in_html(soup)
+        return list(set(new_urls))
 
     def main(self):
         robots = Robots.fetch(self.robots_url)
         if not robots.allowed(self.website, self.user_agent):
             return
 
-        self.crawl(self.website, first=True)
+        urls_valid = [self.website]
+        while urls_valid:
+            new_urls = []
+            for url_valid in urls_valid:
+                new_urls += self.crawl(url_valid, first=True)
+            urls_valid = list(set(new_urls))
         self.save_data()
 
 
