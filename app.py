@@ -109,7 +109,7 @@ if __name__ == '__main__':
         for future in concurrent.futures.as_completed(crawler_proccess):
             domain = crawler_proccess[future]
             try:
-                data = future.result()
+                future.result()
             except Exception as exc:
                 print(f'{domain} generated an exception: {exc}')
             else:
