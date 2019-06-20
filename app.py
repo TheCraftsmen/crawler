@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from reppy.robots import Robots
 from settings import URLS
+from time import sleep
 
 
 class Crawler:
@@ -14,6 +15,9 @@ class Crawler:
     regex_url = "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
     home_url = None
     user_agent = "*"
+    num_request = 0
+    max_num_request = 2
+    max_seconds_delay = 1
 
     def __init__(self, domain, website, scripts_tag=False):
         self.domain = domain
@@ -37,6 +41,10 @@ class Crawler:
         robots = Robots.fetch(self.robots_url)
         if not robots.allowed(url, self.user_agent):
             return
+
+        if not hasattr(self, "start_waiting_time"):
+            self.start_waiting_time = datetime.now()
+
         try:
             response = requests.get(url)
         except Exception as e:
@@ -45,6 +53,15 @@ class Crawler:
 
         if response.status_code != 200:
             return
+
+        self.num_request += 1
+
+        time_pased = (datetime.now() - self.start_waiting_time).seconds
+        if self.num_request >= self.max_num_request:
+            if time_pased < self.max_seconds_delay:
+                sleep(self.max_seconds_delay - time_pased)
+            self.num_request = 0
+            del self.start_waiting_time
 
         if first:
             for h in response.history:
