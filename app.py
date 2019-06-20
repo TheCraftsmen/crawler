@@ -19,43 +19,16 @@ class Crawler:
     max_num_request = 2
     max_seconds_delay = 1
 
-    def __init__(self, domain, website, scripts_tag=False):
+    def __init__(self, domain, website, scripts_tags=False):
         self.domain = domain
         self.website = website
-        self.search_in_scripts_tag = scripts_tag
+        self.search_in_scripts_tags = scripts_tags
         self.robots_url = parse.urljoin(self.website, "/robots.txt")
         self.start_time = datetime.now()
         self.start_time_str = self.start_time.strftime("%m%d%Y%H%M%S")
 
-    def save_data(self):
-        with open(f"{self.domain}_{self.start_time_str}.txt", "w") as file:
-            for url in self.urls:
-                file.write(f'{url}\n')
-
-    def crawl(self, url, first=False):
-
-        if (datetime.now() - self.start_time).seconds >= 200:
-            self.save_data()
-            self.start_time = datetime.now()
-
-        robots = Robots.fetch(self.robots_url)
-        if not robots.allowed(url, self.user_agent):
-            return
-
-        if not hasattr(self, "start_waiting_time"):
-            self.start_waiting_time = datetime.now()
-
-        try:
-            response = requests.get(url)
-        except Exception as e:
-            print(e)
-            return
-
-        if response.status_code != 200:
-            return
-
+    def ratelimit(self):
         self.num_request += 1
-
         time_pased = (datetime.now() - self.start_waiting_time).seconds
         if self.num_request >= self.max_num_request:
             if time_pased < self.max_seconds_delay:
@@ -63,27 +36,39 @@ class Crawler:
             self.num_request = 0
             del self.start_waiting_time
 
-        if first:
-            for h in response.history:
+    def save_data(self):
+        with open(f"{self.domain}_{self.start_time_str}.txt", "w") as file:
+            for url in self.urls:
+                file.write(f'{url}\n')
+
+    def autosave(self):
+        if (datetime.now() - self.start_time).seconds >= 200:
+            self.save_data()
+            self.start_time = datetime.now()
+
+    def set_home_url(self, history):
+        if history:
+            for h in history:
+                print(h.url, "url")
                 self.urls.add(h.url)
                 self.home_url = h.url
+        else:
+            self.home_url = self.website
 
-        html = response.text
-        soup = BeautifulSoup(html, 'html.parser')
+    def search_links_in_script_tags(self, soup):
+        scripts = soup.find_all('script')
+        for script in scripts:
+            if script.attrs.get("type") == 'text/javascript':
+                lines = list(map(lambda x: "".join(x.split()), script.text.split("\n")))
+                for line in lines:
+                    new_urls = re.findall(self.regex_url, line)
+                    for url in new_urls:
+                        if ";" not in url:
+                            self.urls.add(url)
+                            print(url)
+                            self.crawl(url)
 
-        if self.search_in_scripts_tag:
-            scripts = soup.find_all('script')
-            for script in scripts:
-                if script.attrs.get("type") == 'text/javascript':
-                    lines = list(map(lambda x: "".join(x.split()), script.text.split("\n")))
-                    for line in lines:
-                        new_urls = re.findall(self.regex_url, line)
-                        for url in new_urls:
-                            if ";" not in url:
-                                self.urls.add(url)
-                                print(url)
-                                self.crawl(url)
-
+    def search_links_in_html(self, soup):
         links = soup.find_all('a')
         for link in links:
             url = link.get('href')
@@ -104,7 +89,38 @@ class Crawler:
                         print(url)
                         self.urls.add(url)
                         self.crawl(url)
-        return
+
+    def crawl(self, url, first=False):
+        self.autosave()
+
+        robots = Robots.fetch(self.robots_url)
+        if not robots.allowed(url, self.user_agent):
+            return
+
+        if not hasattr(self, "start_waiting_time"):
+            self.start_waiting_time = datetime.now()
+
+        try:
+            response = requests.get(url)
+        except Exception as e:
+            print(e)
+            return
+
+        if response.status_code != 200:
+            return
+
+        self.ratelimit()
+
+        if first:
+            self.set_home_url(response.history)
+
+        html = response.text
+        soup = BeautifulSoup(html, 'html.parser')
+
+        if self.search_in_scripts_tags:
+            self.search_links_in_script_tags(soup)
+
+        self.search_links_in_html(soup)
 
     def main(self):
         robots = Robots.fetch(self.robots_url)
