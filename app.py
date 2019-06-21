@@ -1,4 +1,5 @@
 import re
+import logging
 import requests
 import urllib.parse as parse
 import concurrent.futures
@@ -7,6 +8,15 @@ from datetime import datetime
 from reppy.robots import Robots
 from settings import URLS
 from time import sleep
+
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+    '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 
 class Crawler:
@@ -49,7 +59,6 @@ class Crawler:
     def set_home_url(self, history):
         if history:
             for h in history:
-                print(h.url, "url")
                 self.urls.add(h.url)
                 self.home_url = h.url
         else:
@@ -65,7 +74,7 @@ class Crawler:
                     new_urls = re.findall(self.regex_url, line)
                     for url in new_urls:
                         if ";" not in url:
-                            print(url)
+                            logger.info(f'new url found: {url}')
                             self.urls.add(url)
                             new_urls.append(url)
         return new_urls
@@ -89,7 +98,7 @@ class Crawler:
                     ):
                         url = parse.urljoin(self.home_url, url)
                     if (url not in list(self.urls)):
-                        print(url)
+                        logger.info(f'new url found: {url}')
                         self.urls.add(url)
                         new_urls.append(url)
         return new_urls
@@ -108,7 +117,7 @@ class Crawler:
         try:
             response = requests.get(url)
         except Exception as e:
-            print(e)
+            logger.exception(e)
             return new_urls
 
         if response.status_code != 200:
@@ -146,7 +155,7 @@ if __name__ == '__main__':
     with concurrent.futures.ProcessPoolExecutor() as executor:
         crawler_proccess = {}
         for url in URLS:
-            print(f"starting {url['domain']}")
+            logger.info(f"starting {url['domain']}")
             crawler = Crawler(domain=url["domain"], website=url["website"])
             crawler_proccess[executor.submit(crawler.main)] = url["domain"]
 
@@ -155,6 +164,6 @@ if __name__ == '__main__':
             try:
                 future.result()
             except Exception as exc:
-                print(f'{domain} generated an exception: {exc}')
+                logger.exception(f'{domain} generated an exception: {exc}')
             else:
-                print(f'finished {domain}')
+                logger.info(f'finished {domain}')
