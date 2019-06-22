@@ -10,12 +10,15 @@ from settings import URLS
 from time import sleep
 
 logger = logging.getLogger()
-handler = logging.StreamHandler()
+file_handler = logging.FileHandler(filename='crawler.log')
+stream_handler = logging.StreamHandler()
 formatter = logging.Formatter(
     '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'
 )
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+stream_handler.setFormatter(formatter)
+file_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+logger.addHandler(file_handler)
 logger.setLevel(logging.INFO)
 
 
