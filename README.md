@@ -37,7 +37,7 @@ URLS = [
 when you the configuration you can run the crawler with the next command.
 
 ```
-$ python app.py
+(venv)$ python app.py
 ```
 
 this program permit multi domain crawl
@@ -58,8 +58,10 @@ You can activate a flag in the class to search for urls in the tag scripts, but 
 by default the flag is in False.
 
 I decided to use the combo "requests" + "beatifulsoup4", because the development experience is very good
-and this libs have a very good performance. Also the idea was to be able to show a bit of my development logic
+and this libs have a very good performance. Also the idea was to be able to show a bit of my development logic.
 
 For large-scale projects I would think about implementations
 1) adding dask distributed or python ray with cython optimization to this project
-2) using the scrapy framework
+2) using the scrapy framework.
+
+Make this project has taken to me 6 hours work man.
