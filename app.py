@@ -100,7 +100,7 @@ class Crawler:
             elif not re.match(self.regex_url, url) or self.domain not in url:
                 continue
 
-            if url not in list(self.urls):
+            if url not in self.urls:
                 logger.info(f'new url found: {url}')
                 self.urls.add(url)
                 new_urls.append(url)
