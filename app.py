@@ -82,28 +82,29 @@ class Crawler:
                             new_urls.append(url)
         return new_urls
 
+    def is_spa_views(self, url):
+        return (
+            url.startswith("/") or url.startswith("#") or
+            url.startswith("./") or url.startswith(".#")
+        )
+
     def search_links_in_html(self, soup):
         new_urls = []
         links = soup.find_all('a')
         for link in links:
             url = link.get('href')
-            if url and isinstance(url, str):
-                if (
-                    re.match(self.regex_url, url) and (self.domain in url) or
-                    url.startswith("/") or
-                    url.startswith("#") or
-                    url.startswith("./") or
-                    url.startswith(".#")
-                ):
-                    if (
-                        url.startswith("/") or url.startswith("./") or
-                        url.startswith("#") or url.startswith(".#")
-                    ):
-                        url = parse.urljoin(self.home_url, url)
-                    if (url not in list(self.urls)):
-                        logger.info(f'new url found: {url}')
-                        self.urls.add(url)
-                        new_urls.append(url)
+            if not isinstance(url, str):
+                continue
+            if self.is_spa_views(url):
+                url = parse.urljoin(self.home_url, url)
+            elif not re.match(self.regex_url, url) or self.domain not in url:
+                continue
+
+            if (url not in list(self.urls)):
+                logger.info(f'new url found: {url}')
+                self.urls.add(url)
+                new_urls.append(url)
+
         return new_urls
 
     def crawl(self, url, first=False):
