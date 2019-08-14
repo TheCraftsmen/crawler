@@ -1,4 +1,4 @@
-Web CRAWLER - Task 1
+Web CRAWLER
 ===========
 
 For run the project, first you need to create a virtualenv with python 3 version in the project's root folder.
